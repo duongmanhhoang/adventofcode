@@ -146,12 +146,16 @@ lines.forEach((line, lineIdx) => {
   const totalChars = line.length;
   const prevLine = lines[lineIdx - 1];
   const nextLine = lines[lineIdx + 1];
-  const numbers = line.match(/\d+/g);
+  const numbers = Array.from(line.matchAll(/\d+/g));
+  console.log(numbers);
 
   numbers.forEach((number) => {
-    const numIdx = line.indexOf(number);
+    const numIdx = number.index;
     const prevIdx = numIdx - 1 ?? 0;
-    const nextIdx = numIdx + number.length + 1 > totalChars ? totalChars : numIdx + number.length + 1;
+    const nextIdx =
+      numIdx + number[0].length + 1 > totalChars ?
+      totalChars :
+      numIdx + number[0].length + 1;
 
     const dataCheck = [
       line.substring(prevIdx, nextIdx),
@@ -159,14 +163,10 @@ lines.forEach((line, lineIdx) => {
 
     if (prevLine) dataCheck.push(prevLine.substring(prevIdx, nextIdx));
     if (nextLine) dataCheck.push(nextLine.substring(prevIdx, nextIdx));
-    
 
     const check = dataCheck.some(line => /[^\d.]/.test(line));
 
-
     if (check) total += Number(number);
-
-    // console.log(/[0-9.]/.test(line));
   })
 });
 
