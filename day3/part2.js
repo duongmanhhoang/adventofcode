@@ -156,34 +156,43 @@ function replaceCharAtIndex(inputString, index, newChar) {
 }
 
 function getNumberAroundStar(line) {
-  const matches = [];
   const regex = /(\d*)\*(\d*)/g;
-  let match;
 
-  while ((match = regex.exec(line)) !== null) {
-    matches.push(match[1]);
-    matches.push(match[2]);
-  }
-
-  return matches;
+  return Array.from(line.matchAll(regex), (match) => ({
+    values: [match[1], match[2]].filter(Boolean),
+    index: match.index,
+    starIndex: match.index + match[0].indexOf("*"),
+  }))
+    .filter((match) => match.values.length)
+    .flat();
 }
 
 function getNumbersNextPrevLine(line, index, num = 0, charIdxIsNum = false) {
-  const matches = [];
   const regex = /(\d*)special(\d*)/g;
   const newLine = replaceCharAtIndex(line, index, "special");
-  let match;
 
-  while ((match = regex.exec(newLine)) !== null) {
+  const matches = Array.from(newLine.matchAll(regex), (match) => {
+    const value1 = match[1];
+    const value2 = match[2];
+
     if (charIdxIsNum) {
-      matches.push(match[1] + num + match[2]);
+      return [
+        {
+          values: [value1 + num + value2],
+          index: match.index,
+        },
+      ];
     } else {
-      matches.push(match[1]);
-      matches.push(match[2]);
+      return [
+        {
+          values: [value1, value2],
+          index: match.index,
+        },
+      ];
     }
-  }
+  }).flat();
 
-  return matches;
+  return matches.filter(Boolean).filter((match) => match.values.length);
 }
 
 lines.forEach((line, lineIdx) => {
@@ -191,26 +200,57 @@ lines.forEach((line, lineIdx) => {
   const nextLine = lines[lineIdx + 1];
   const stars = Array.from(line.matchAll(/\*/g));
   const dataCheck = [prevLine, line, nextLine];
-  let numsAroundStar = getNumberAroundStar(line);
 
   stars.forEach((star) => {
+    let numMatches = [];
+    let numsAroundStar = getNumberAroundStar(line);
+    let numsAroundOtherLine = [];
+    let numsMatchOtherLine = [];
     const starIdx = star.index;
 
     dataCheck.forEach((line, itemIdx) => {
-      if (itemIdx === 1) return;
+      if (itemIdx === 1 || !line) return;
 
-      const numbers = isNaN(Number(line[starIdx]))
-        ? getNumbersNextPrevLine(line, starIdx)
-        : getNumbersNextPrevLine(line, starIdx, line[starIdx], true);
-
-      numsAroundStar = numsAroundStar.concat(numbers);
+      if (isNaN(Number(line[starIdx]))) {
+        numsAroundOtherLine = numsAroundOtherLine.concat(
+          getNumbersNextPrevLine(line, starIdx)
+        );
+      } else {
+        numsMatchOtherLine = numsMatchOtherLine.concat(
+          getNumbersNextPrevLine(line, starIdx, line[starIdx], true)
+        );
+      }
     });
-  });
 
-  numsAroundStar = numsAroundStar.map((num) => Number(num));
-  total += numsAroundStar.reduce(function (caculate, num) {
-    return caculate + num;
-  }, 0);
+    const matches = numsAroundOtherLine
+      .filter((num) => {
+       	return num.values.filter((value, index) => {
+        	if (!index) return num.index + value.length == starIdx;
+
+        	return num.index == starIdx;
+        })
+       
+        
+      })
+      .concat(numsMatchOtherLine);
+
+    const numAroundStar = numsAroundStar.find(
+      (num) => num.starIndex == starIdx
+    );
+
+    numMatches = numMatches.concat(matches.map((match) => match.values).flat());
+
+    if (numAroundStar) {
+      numMatches = numMatches.concat(numAroundStar.values.flat());
+    }
+    numMatches = numMatches.filter(Boolean);
+
+    if (numMatches?.length !== 2) return;
+
+    total += numMatches.reduce((prevVal, currentVal) => {
+      return prevVal * currentVal;
+    }, 1);
+  });
 });
 
 console.log(total);
