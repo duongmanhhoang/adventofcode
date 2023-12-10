@@ -223,19 +223,21 @@ let data = {
   location: [],
 };
 
-const getSourceDesData = (data) => {
+const getSourceDesData = (dataMapping) => {
   let sources = [];
   let destinations = [];
 
-  const sourceStart = Number(data[1]);
-  const desStart = Number(data[0]);
-  const range = Number(data[2]);
-  sources = sources.concat(
-    Array.from({ length: range }, (_, index) => sourceStart + index)
-  );
-  destinations = destinations.concat(
-    Array.from({ length: range }, (_, index) => desStart + index)
-  );
+  dataMapping.forEach((itemMapping) => {
+    const sourceStart = Number(itemMapping[1]);
+    const desStart = Number(itemMapping[0]);
+    const range = Number(itemMapping[2]);
+    sources = sources.concat(
+      Array.from({ length: range }, (_, index) => sourceStart + index)
+    );
+    destinations = destinations.concat(
+      Array.from({ length: range }, (_, index) => desStart + index)
+    );
+  });
 
   const sourcesSorted = [...sources].sort((x, y) => x - y);
   let desSorted = [];
@@ -279,85 +281,123 @@ lines.forEach((line) => {
   }
 });
 
-dataMap[`seed-to-soil map`].forEach((item) => {
-  const { sourcesSorted, desSorted } = getSourceDesData(item);
-  data.seed = sourcesSorted;
-  data.soil = desSorted;
-});
-console.log(data);
+function readInput() {
+  const inputLines = input.split("\n");
+  const [seedsLine, ...otherLines] = inputLines;
+  const seeds = parseNumbers(seedsLine.split(":")[1]);
+  const maps = [];
 
-dataMap[`soil-to-fertilizer map`].forEach((item) => {
-  const { sources, destinations } = getSourceDesData(item);
-  let desSorted = [];
-  data.soil.forEach((sourceSorted, index) => {
-    desSorted[index] =
-      destinations[sources.indexOf(sourceSorted)] ?? data.soil[index];
-  });
+  for (const line of otherLines) {
+    if (line.trim() === "") {
+      continue;
+    }
 
-  data.fer = desSorted;
-});
+    if (line.includes("map")) {
+      maps.push([]);
+      continue;
+    }
 
-dataMap[`fertilizer-to-water map`].forEach((item) => {
-  const { sources, destinations } = getSourceDesData(item);
-  let desSorted = [];
+    const currentMap = maps[maps.length - 1];
+    const [dstRangeStart, srcRangeStart, rangeLength] = parseNumbers(line);
+    currentMap.push({
+      dstRangeStart,
+      srcRangeStart,
+      rangeLength,
+    });
+  }
+  
+  return { seeds, maps };
+}
 
-  data.fer.forEach((sourceSorted, index) => {
-    desSorted[index] =
-      destinations[sources.indexOf(sourceSorted)] ?? data.fer[index];
-  });
+function parseNumbers(line) {
+  return line
+    .trim()
+    .split(" ")
+    .map((x) => parseInt(x, 10));
+}
 
-  data.water = desSorted;
-});
+const dataInput = readInput();
 
-dataMap[`water-to-light map`].forEach((item) => {
-  const { sources, destinations } = getSourceDesData(item);
-  let desSorted = [];
+function solve({ seeds, maps }) {
+  return {
+    part1: solvePart1({ seeds, maps }), // ~0.25 ms
+    part2: solvePart2({ seeds, maps }), // ~5500 ms
+  };
+}
 
-  data.water.forEach((sourceSorted, index) => {
-    desSorted[index] =
-      destinations[sources.indexOf(sourceSorted)] ?? data.water[index];
-  });
+function solvePart1({ seeds, maps }) {
+  const locations = seeds.map((seed) => getLocationBySeed(seed, maps));
+  return Math.min(...locations);
+}
 
-  data.light = desSorted;
-});
+function solvePart2({ seeds, maps }) {
+  const seedRanges = getSeedRanges(seeds);
 
-dataMap[`light-to-temperature map`].forEach((item) => {
-  const { sources, destinations } = getSourceDesData(item);
-  let desSorted = [];
+  for (let location = 0; ; location++) {
+    const seed = getSeedByLocation(location, maps);
 
-  data.light.forEach((sourceSorted, index) => {
-    desSorted[index] =
-      destinations[sources.indexOf(sourceSorted)] ?? data.light[index];
-  });
+    if (isSeedPresent(seed, seedRanges)) {
+      return location;
+    }
+  }
+}
 
-  data.temp = desSorted;
-});
+function getLocationBySeed(seed, maps) {
+  return maps.reduce((dst, map) => {
+    return getDstByMap(dst, map)
+  }, seed);
+}
 
-dataMap[`temperature-to-humidity map`].forEach((item) => {
-  const { sources, destinations } = getSourceDesData(item);
-  let desSorted = [];
+function getDstByMap(src, map) {
+  const mapEntry = map.find(
+    ({ srcRangeStart, rangeLength }) =>
+      src >= srcRangeStart && src <= srcRangeStart + rangeLength
+  );
 
-  data.temp.forEach((sourceSorted, index) => {
-    desSorted[index] =
-      destinations[sources.indexOf(sourceSorted)] ?? data.temp[index];
-  });
+  if (!mapEntry) {
+    return src;
+  }
 
-  data.humid = desSorted;
-});
+  const offset = src - mapEntry.srcRangeStart;
+  const dst = mapEntry.dstRangeStart + offset;
 
-dataMap[`humidity-to-location map`].forEach((item) => {
-  const { sources, destinations } = getSourceDesData(item);
-  let desSorted = [];
+  return dst;
+}
 
-  data.humid.forEach((sourceSorted, index) => {
-    desSorted[index] =
-      destinations[sources.indexOf(sourceSorted)] ?? data.humid[index];
-  });
+function getSeedRanges(seeds) {
+  const ranges = [];
+  for (let i = 0; i < seeds.length; i += 2) {
+    ranges.push({
+      start: seeds[i],
+      end: seeds[i] + seeds[i + 1],
+    });
+  }
+  return ranges;
+}
 
-  data.location = desSorted;
-});
+function isSeedPresent(seed, seedRanges) {
+  return seedRanges.some(({ start, end }) => start <= seed && seed <= end);
+}
 
-const locations = seeds.map((seed) => data.location[seed]);
-console.log(locations);
+function getSeedByLocation(location, maps) {
+  return [...maps]
+    .reverse()
+    .reduce((src, map) => getSrcByMap(src, map), location);
+}
 
-console.log(Math.min(...locations));
+function getSrcByMap(dst, map) {
+  const mapEntry = map.find(
+    ({ dstRangeStart, rangeLength }) =>
+      dst >= dstRangeStart && dst <= dstRangeStart + rangeLength
+  );
+
+  if (!mapEntry) {
+    return dst;
+  }
+
+  const offset = dst - mapEntry.dstRangeStart;
+  const src = mapEntry.srcRangeStart + offset;
+  return src;
+}
+
+console.log(solve(dataInput));
