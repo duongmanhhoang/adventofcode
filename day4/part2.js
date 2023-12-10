@@ -204,7 +204,6 @@ Card 203:  3 95 82 57 59 23 20 77 49 28 | 60 35 25 96 83 91 47 86 40 73 33 24 12
 Card 204: 11  9 81 75 39 52 19 96 47 66 | 37 22 70 43 51 72  7 67 50 83 90 23 24 28 57 87 86 13 27 76 94 35 40 17 91`;
 
 const lines = input.split("\n");
-let total = 0;
 let cardScratched = [];
 
 lines.forEach((line, index) => {

@@ -11,7 +11,7 @@ times.forEach((time, index) => {
   	const minSpeed = Math.ceil(distance/time);
  	let wtw = 0;
   
-  	for (let holdTime = minSpeed; holdTime < distance; holdTime++) {
+  	for (let holdTime = minSpeed; holdTime < time; holdTime++) {
       	const timeLeft = time - holdTime;
     	
       	if (timeLeft * holdTime > distance) wtw += 1;
